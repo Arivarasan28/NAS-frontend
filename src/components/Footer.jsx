@@ -5,8 +5,8 @@ import { FaRegCopyright } from "react-icons/fa";
 
 const Footer = ({ noMargin }) => {
   return (
-    <div className={`h-250 mt-12`}>
-      <div className="h-[2px] bg-blue-950"></div>
+    <div className={`h-250 mt-12 max-w-7xl mx-auto`}>
+      <div className="h-[1px] bg-blue-950"></div>
       <div className="grid grid-cols-4 m-5 gap-20 font-medium text-blue-950 mt-5">
         {/* Hospital Info Section */}
         <div className="ml-2 col-span-2">

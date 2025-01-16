@@ -13,9 +13,13 @@
 
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import doctor from '../assets/images/doctor.png'
 
-const Home = () => {
+const Home = ({ setIsAuthPopupsOpen, setAuthPopupType }) => {
+  
+  const navigate = useNavigate();
+
   const specialities = [
     { name: 'General Physician', icon: '👨‍⚕️' },
     { name: 'Cardiologist', icon: '❤️' },
@@ -32,7 +36,7 @@ const Home = () => {
   });
 
   return (
-    <div className="bg-gray-100">
+    <div className="bg-gray-100 py-8">
       {/* Hero Section */}
       <section className="bg-customBlue1 text-white text-center py-16 max-w-7xl mx-auto">
         <h1 className="text-4xl font-bold">Book Appointment With Trusted Doctors</h1>
@@ -61,11 +65,11 @@ const Home = () => {
       {/* Top Doctors Section */}
       <section className="py-12 px-40">
         <h2 className="text-center text-2xl font-bold mb-8">Top Doctors to Book</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 px-6 lg:px-16">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {doctors.map((doctor, index) => (
             <div
               key={index}
-              className="bg-white p-6 shadow-md rounded-lg text-center flex flex-col items-center max-w-md mx-auto"
+              className="bg-white rounded-lg shadow-md p-4 flex flex-col items-center transform transition-transform duration-300 hover:scale-105"
             >
               <img
                 src={doctor.image}
@@ -81,16 +85,24 @@ const Home = () => {
           ))}
         </div>
         <div className="flex justify-center mt-8">
-          <button className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">
+          <button 
+            onClick={() => navigate('/doctors')}
+            className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">
             More
           </button>
         </div>
       </section>
 
       {/* Call-to-Action Section */}
-      <section className="bg-customBlue1 text-white py-16 text-center">
+      <section className="bg-customBlue1 text-white text-center py-16 max-w-7xl mx-auto">
         <h2 className="text-3xl font-bold">Book Appointment With 100+ Trusted Doctors</h2>
-        <button className="mt-6 px-6 py-3 bg-white text-blue-500 font-semibold rounded-lg hover:bg-gray-200">
+        <button 
+          onClick={() => {
+            setAuthPopupType('signup'); // Set popup type to "signup"
+            setIsAuthPopupsOpen(true); // Open the popup
+          }}
+          className="mt-6 px-6 py-3 bg-white text-blue-500 font-semibold rounded-lg hover:bg-gray-200"
+        >
           Create Account
         </button>
       </section>
@@ -99,3 +111,4 @@ const Home = () => {
 };
 
 export default Home;
+
