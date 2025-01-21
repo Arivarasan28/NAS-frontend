@@ -1,5 +1,5 @@
 import React from "react";
-import contactImage from "../assets/images/contact.jpg"; // Replace with your image path
+import contactImage from "../../assets/images/contact.jpg"; // Replace with your image path
 
 const Contact = () => {
   return (

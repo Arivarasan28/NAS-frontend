@@ -89,7 +89,7 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import doctorImage from '../assets/images/doctor.png';
+import doctorImage from '../../assets/images/doctor.png';
 
 const doctorsData = [
   { id: 1, name: 'Dr. Richard James', specialty: 'General Physician', status: 'Available', image: doctorImage },

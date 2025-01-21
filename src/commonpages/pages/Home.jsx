@@ -14,7 +14,7 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import doctor from '../assets/images/doctor.png'
+import doctor from "../../assets/images/doctor.png";
 
 const Home = ({ setIsAuthPopupsOpen, setAuthPopupType }) => {
   

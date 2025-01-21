@@ -11,7 +11,7 @@
 // export default About
 
 import React from 'react';
-import ab from "../assets/images/ab.png";
+import ab from "../../assets/images/ab.png";
 
 const About = () => {
   return (
