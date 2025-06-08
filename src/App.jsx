@@ -113,9 +113,13 @@ import AdminDashboard from './clinic/adminpages/pages/AdminDashboard';
 import AdminAppointments from './clinic/adminpages/pages/AdminAppointments';
 import AdminDoctors from './clinic/adminpages/pages/AdminDoctors';
 import AdminPatients from './clinic/adminpages/pages/AdminPatients';
+import RegisterUser from './clinic/adminpages/pages/RegisterUser';
 import DoctorDashboard from './clinic/doctorpages/pages/DoctorDashboard';
 import DoctorProfile from './clinic/doctorpages/pages/DoctorProfile';
 import AdminProtectedRoutes from './utils/AdminProtectedRoutes';
+import ReceptionistDashboard from './clinic/receptionistpages/pages/ReceptionistDashboard';
+import PatientProfile from './clinic/patientpages/pages/PatientProfile';
+import ProtectedRoutes from './utils/ProtectedRoutes';
 
 const App = () => {
   const [isAuthPopupsOpen, setIsAuthPopupsOpen] = useState(false);
@@ -145,16 +149,30 @@ const App = () => {
         <Route path="/admin-doctors" element={<AdminDoctors />} />
         <Route path="/admin-patients" element={<AdminPatients />} /> */}
 
-        <Route element={<AdminProtectedRoutes />}>
+        {/* Admin Routes */}
+        <Route element={<ProtectedRoutes allowedRole="ADMIN" />}>
           <Route path="/admin-dashboard" element={<AdminDashboard />} />
           <Route path="/admin-appointments" element={<AdminAppointments />} />
           <Route path="/admin-doctors" element={<AdminDoctors />} />
           <Route path="/admin-patients" element={<AdminPatients />} />
+          <Route path="/admin-register-user" element={<RegisterUser />} />
         </Route>
 
-
-        <Route path="/doctor-dashboard" element={<DoctorDashboard />} />
-        <Route path="/doctor-profile" element={<DoctorProfile />} />
+        {/* Doctor Routes */}
+        <Route element={<ProtectedRoutes allowedRole="DOCTOR" />}>
+          <Route path="/doctor-dashboard" element={<DoctorDashboard />} />
+          <Route path="/doctor-profile" element={<DoctorProfile />} />
+        </Route>
+        
+        {/* Receptionist Routes */}
+        <Route element={<ProtectedRoutes allowedRole="RECEPTIONIST" />}>
+          <Route path="/receptionist-dashboard" element={<ReceptionistDashboard />} />
+        </Route>
+        
+        {/* Patient Routes */}
+        <Route element={<ProtectedRoutes allowedRole="PATIENT" />}>
+          <Route path="/patient-profile" element={<PatientProfile />} />
+        </Route>
       </Routes>
       <AuthPopups 
         isOpen={isAuthPopupsOpen} 
