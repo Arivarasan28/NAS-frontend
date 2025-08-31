@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import AuthService from '../../../services/AuthService';
+import DoctorCard from '../../../components/DoctorCard';
+import DoctorDetails from '../../../components/DoctorDetails';
+import AppointmentFlowModal from '../../../components/AppointmentFlowModal';
 
 const BookAppointment = () => {
   const [doctors, setDoctors] = useState([]);
@@ -12,6 +15,14 @@ const BookAppointment = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const navigate = useNavigate();
+
+  // Modal state for doctor details popup
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsDoctor, setDetailsDoctor] = useState(null);
+
+  // Modal state for booking flow (date & time selection)
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const [bookingDoctor, setBookingDoctor] = useState(null);
 
   // On component mount, fetch all doctors
   useEffect(() => {
@@ -96,9 +107,20 @@ const BookAppointment = () => {
 
   // Handle doctor selection
   const handleDoctorSelect = (doctor) => {
-    setSelectedDoctor(doctor);
-    setAvailableSlots([]);
-    if (selectedDate) fetchAvailableSlots();
+    // Open booking modal for modern flow
+    setBookingDoctor(doctor);
+    setBookingOpen(true);
+  };
+
+  // Open details modal when clicking card (not the action button)
+  const onCardClick = (doctor) => {
+    setDetailsDoctor(doctor);
+    setDetailsOpen(true);
+  };
+
+  const closeDetails = () => {
+    setDetailsOpen(false);
+    setDetailsDoctor(null);
   };
 
   // Handle date selection
@@ -183,6 +205,31 @@ const BookAppointment = () => {
           <p>{successMessage}</p>
         </div>
       )}
+
+      {/* Doctor Details Modal */}
+      {detailsOpen && detailsDoctor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black bg-opacity-50" onClick={closeDetails} />
+          <div className="relative bg-white w-full max-w-4xl mx-4 rounded-lg shadow-xl overflow-hidden">
+            <div className="flex justify-between items-center px-4 py-3 border-b">
+              <h3 className="text-lg font-semibold">Doctor Details</h3>
+              <button onClick={closeDetails} className="text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+            <div className="max-h-[80vh] overflow-y-auto p-4">
+              <DoctorDetails doctorId={detailsDoctor.id} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Appointment Booking Modal */}
+      {bookingOpen && bookingDoctor && (
+        <AppointmentFlowModal
+          isOpen={bookingOpen}
+          onClose={() => { setBookingOpen(false); setBookingDoctor(null); }}
+          doctor={bookingDoctor}
+        />
+      )}
       
       {/* Error message */}
       {errorMessage && (
@@ -202,25 +249,15 @@ const BookAppointment = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {doctors.map(doctor => (
-                <div 
+                <DoctorCard
                   key={doctor.id}
-                  onClick={() => handleDoctorSelect(doctor)}
-                  className={`border rounded-lg p-4 cursor-pointer transition ${
-                    selectedDoctor && selectedDoctor.id === doctor.id 
-                    ? 'border-blue-500 bg-blue-50' 
-                    : 'border-gray-200 hover:border-blue-300'
-                  }`}
-                >
-                  <div className="flex items-center">
-                    <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center mr-4 text-gray-600 font-bold">
-                      {doctor.name ? doctor.name.charAt(0).toUpperCase() : 'D'}
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-800">Dr. {doctor.name}</h3>
-                      <p className="text-sm text-gray-600">{doctor.specialization}</p>
-                    </div>
-                  </div>
-                </div>
+                  doctor={doctor}
+                  mode="display"
+                  showBookButton={true}
+                  onBookAppointment={handleDoctorSelect}
+                  userRole={AuthService.getUserRole()}
+                  onCardClick={onCardClick}
+                />
               ))}
             </div>
           )}

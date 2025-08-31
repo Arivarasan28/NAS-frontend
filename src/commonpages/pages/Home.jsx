@@ -1,24 +1,22 @@
-// import React from 'react'
-
-// const Home = () => {
-//   return (
-//     <div>
-      
-//     </div>
-//   )
-// }
-
-// export default Home
-
-
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import doctor from "../../assets/images/doctor.png";
+import AuthService from '../../services/AuthService';
 
 const Home = ({ setIsAuthPopupsOpen, setAuthPopupType }) => {
   
   const navigate = useNavigate();
+
+  const handleBookAppointmentClick = () => {
+    const isLoggedIn = AuthService.isLoggedIn();
+    const role = AuthService.getUserRole();
+    if (isLoggedIn && role === 'PATIENT') {
+      navigate('/book-appointment');
+    } else {
+      setAuthPopupType('login');
+      setIsAuthPopupsOpen(true);
+    }
+  };
 
   const specialities = [
     { name: 'General Physician', icon: '👨‍⚕️' },
@@ -44,7 +42,7 @@ const Home = ({ setIsAuthPopupsOpen, setAuthPopupType }) => {
           Simple steps to find the right doctor with trusted reviews and schedule
           your appointment in no time.
         </p>
-        <button className="mt-6 px-6 py-3 bg-white text-blue-500 font-semibold rounded-lg hover:bg-gray-200">
+        <button onClick={handleBookAppointmentClick} className="mt-6 px-6 py-3 bg-white text-blue-500 font-semibold rounded-lg hover:bg-gray-200">
           Book Appointment
         </button>
       </section>
@@ -78,7 +76,7 @@ const Home = ({ setIsAuthPopupsOpen, setAuthPopupType }) => {
               />
               <h3 className="text-lg font-semibold">{doctor.name}</h3>
               <p className="text-gray-600">{doctor.specialty}</p>
-              <button className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+              <button onClick={handleBookAppointmentClick} className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
                 Book Now
               </button>
             </div>

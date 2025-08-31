@@ -106,8 +106,8 @@ import NavBar from './commonpages/components/NavBar';
 import Home from './commonpages/pages/Home';
 import About from './commonpages/pages/About';
 import Contact from './commonpages/pages/Contact';
-import AllDoctors from './clinic/pages/AllDoctors';
-import DoctorDetails from './clinic/pages/DoctorDetails';
+import AllDoctors from './commonpages/pages/AllDoctors';
+import DoctorDetails from './components/DoctorDetails';
 import Footer from './commonpages/components/Footer';
 import AuthPopups from './commonpages/popups/AuthPopups';
 import AdminDashboard from './clinic/adminpages/pages/AdminDashboard';
@@ -146,7 +146,15 @@ const App = () => {
           } 
         />
         <Route path="/about" element={<About />} />
-        <Route path="/doctors" element={<AllDoctors />} />
+        <Route 
+          path="/doctors" 
+          element={
+            <AllDoctors 
+              setIsAuthPopupsOpen={setIsAuthPopupsOpen}
+              setAuthPopupType={setAuthPopupType}
+            />
+          } 
+        />
         <Route path="/doctors/:doctorId" element={<DoctorDetails />} />
         <Route path="/contact" element={<Contact />} />
 

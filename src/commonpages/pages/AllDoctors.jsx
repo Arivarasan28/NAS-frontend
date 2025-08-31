@@ -3,8 +3,11 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import AuthService from '../../services/AuthService';
+import DoctorCard from '../../components/DoctorCard';
+import DoctorDetails from '../../components/DoctorDetails';
+import AppointmentFlowModal from '../../components/AppointmentFlowModal';
 
-const AllDoctors = () => {
+const AllDoctors = ({ setIsAuthPopupsOpen, setAuthPopupType }) => {
   const [doctors, setDoctors] = useState([]);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [selectedDate, setSelectedDate] = useState('');
@@ -16,20 +19,42 @@ const AllDoctors = () => {
   const [specialties, setSpecialties] = useState([]);
   const navigate = useNavigate();
 
+  // Modal state for doctor details popup
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsDoctor, setDetailsDoctor] = useState(null);
+
+  // Modal state for booking flow (date & time selection)
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const [bookingDoctor, setBookingDoctor] = useState(null);
+
   // On component mount, fetch all doctors
   useEffect(() => {
     const fetchDoctors = async () => {
       try {
         setLoading(true);
-        const response = await axios.get('http://localhost:8081/api/doctor/', {
-          headers: {
-            'Authorization': `Bearer ${AuthService.getToken()}`
+        const token = AuthService.getToken();
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+        const doFetch = async (opts = {}) =>
+          axios.get('http://localhost:8081/api/doctor/', opts);
+
+        let response;
+        try {
+          response = await doFetch({ headers });
+        } catch (err) {
+          // If unauthorized/forbidden, retry without auth for public access
+          if (err?.response && (err.response.status === 401 || err.response.status === 403)) {
+            response = await doFetch();
+          } else {
+            throw err;
           }
-        });
-        setDoctors(response.data);
-        
+        }
+
+        // Use API data directly so DoctorCard can apply its own name fallbacks
+        setDoctors(response.data || []);
+
         // Extract unique specialties for filtering
-        const uniqueSpecialties = [...new Set(response.data.map(doctor => doctor.specialization))];
+        const uniqueSpecialties = [...new Set((response.data || []).map(d => d?.specialization).filter(Boolean))];
         setSpecialties(uniqueSpecialties);
       } catch (error) {
         console.error('Error fetching doctors:', error);
@@ -106,6 +131,31 @@ const AllDoctors = () => {
     setSelectedDoctor(doctor);
     setAvailableSlots([]);
     if (selectedDate) fetchAvailableSlots();
+  };
+
+  // Unified action when clicking the card button
+  const onCardAction = (doctor) => {
+    const role = AuthService.getUserRole();
+    if (role === 'PATIENT') {
+      // Open booking modal for a modern flow
+      setBookingDoctor(doctor);
+      setBookingOpen(true);
+    } else {
+      // Open login popup
+      if (typeof setAuthPopupType === 'function') setAuthPopupType('login');
+      if (typeof setIsAuthPopupsOpen === 'function') setIsAuthPopupsOpen(true);
+    }
+  };
+
+  // Open details modal when clicking card (not the button)
+  const onCardClick = (doctor) => {
+    setDetailsDoctor(doctor);
+    setDetailsOpen(true);
+  };
+
+  const closeDetails = () => {
+    setDetailsOpen(false);
+    setDetailsDoctor(null);
   };
 
   // Handle date selection
@@ -201,14 +251,39 @@ const AllDoctors = () => {
   });
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <h1 className="text-3xl font-bold text-gray-800 mb-6">Book an Appointment</h1>
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-8 text-center">Our Doctors</h1>
       
       {/* Success message */}
       {successMessage && (
         <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
           <p>{successMessage}</p>
         </div>
+      )}
+
+      {/* Doctor Details Modal */}
+      {detailsOpen && detailsDoctor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black bg-opacity-50" onClick={closeDetails} />
+          <div className="relative bg-white w-full max-w-4xl mx-4 rounded-lg shadow-xl overflow-hidden">
+            <div className="flex justify-between items-center px-4 py-3 border-b">
+              <h3 className="text-lg font-semibold">Doctor Details</h3>
+              <button onClick={closeDetails} className="text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+            <div className="max-h-[80vh] overflow-y-auto p-4">
+              <DoctorDetails doctorId={detailsDoctor.id} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Appointment Booking Modal */}
+      {bookingOpen && bookingDoctor && (
+        <AppointmentFlowModal
+          isOpen={bookingOpen}
+          onClose={() => { setBookingOpen(false); setBookingDoctor(null); }}
+          doctor={bookingDoctor}
+        />
       )}
       
       {/* Error message */}
@@ -219,79 +294,47 @@ const AllDoctors = () => {
       )}
 
       {/* Specialty Filter */}
-      <div className="bg-white shadow-md rounded-lg overflow-hidden mb-6">
-        <div className="p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Filter by Specialty</h2>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => handleSpecialtyFilter('')}
-              className={`py-2 px-4 rounded-md text-sm transition ${
-                specialtyFilter === '' 
-                ? 'bg-blue-500 text-white' 
-                : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-              }`}
-            >
-              All Specialties
-            </button>
+      <div className="mb-8 flex flex-col md:flex-row gap-4">
+        <div className="w-full">
+          <select
+            className="w-full p-3 border border-gray-300 rounded-md"
+            value={specialtyFilter}
+            onChange={(e) => setSpecialtyFilter(e.target.value)}
+          >
+            <option value="">All Specialties</option>
             {specialties.map((specialty, index) => (
-              <button
-                key={index}
-                onClick={() => handleSpecialtyFilter(specialty)}
-                className={`py-2 px-4 rounded-md text-sm transition ${
-                  specialtyFilter === specialty 
-                  ? 'bg-blue-500 text-white' 
-                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                }`}
-              >
+              <option key={index} value={specialty}>
                 {specialty}
-              </button>
+              </option>
             ))}
-          </div>
+          </select>
         </div>
       </div>
       
-      <div className="bg-white shadow-md rounded-lg overflow-hidden mb-6">
-        <div className="p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">1. Select a Doctor</h2>
-          
-          {loading && !doctors.length ? (
-            <div className="flex justify-center p-4">
-              <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredDoctors.map(doctor => (
-                <div 
-                  key={doctor.id}
-                  onClick={() => handleDoctorSelect(doctor)}
-                  className={`border rounded-lg p-4 cursor-pointer transition ${
-                    selectedDoctor && selectedDoctor.id === doctor.id 
-                    ? 'border-blue-500 bg-blue-50' 
-                    : 'border-gray-200 hover:border-blue-300'
-                  }`}
-                >
-                  <div className="flex items-center">
-                    <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center mr-4 text-gray-600 font-bold">
-                      {doctor.name ? doctor.name.charAt(0).toUpperCase() : 'D'}
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-800">Dr. {doctor.name}</h3>
-                      <p className="text-sm text-gray-600">{doctor.specialization}</p>
-                      <p className="text-xs text-gray-500">{doctor.email}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          
-          {!filteredDoctors.length && !loading && (
-            <div className="text-center p-4 border border-gray-200 rounded">
-              <p className="text-gray-600">No doctors found for the selected specialty. Please try another specialty.</p>
-            </div>
-          )}
+      {loading ? (
+        <div className="text-center py-8">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-4">Loading doctors...</p>
         </div>
-      </div>
+      ) : filteredDoctors.length === 0 ? (
+        <div className="text-center py-8 bg-gray-50 rounded-lg">
+          <p className="mt-4 text-gray-600">No doctors found matching your criteria.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredDoctors.map(doctor => (
+            <DoctorCard
+              key={doctor.id}
+              doctor={doctor}
+              mode="display"
+              showBookButton={true}
+              onBookAppointment={onCardAction}
+              userRole={AuthService.getUserRole()}
+              onCardClick={onCardClick}
+            />
+          ))}
+        </div>
+      )}
       
       {selectedDoctor && (
         <div className="bg-white shadow-md rounded-lg overflow-hidden mb-6">

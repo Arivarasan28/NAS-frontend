@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FaUserMd, FaCalendarAlt, FaMapMarkerAlt, FaEnvelope, FaPhone, FaClock } from 'react-icons/fa';
-import DoctorService from '../../services/DoctorService';
-import AppointmentService from '../../services/AppointmentService';
-import AuthService from '../../services/AuthService';
+import DoctorService from '../services/DoctorService';
+import AppointmentService from '../services/AppointmentService';
+import AuthService from '../services/AuthService';
 
-const DoctorDetails = () => {
-  const { doctorId } = useParams();
+const DoctorDetails = ({ doctorId: propDoctorId }) => {
+  const { doctorId: routeDoctorId } = useParams();
   const navigate = useNavigate();
+  const doctorId = propDoctorId || routeDoctorId;
   
   const [doctor, setDoctor] = useState(null);
   const [appointmentSlots, setAppointmentSlots] = useState([]);
@@ -35,6 +36,7 @@ const DoctorDetails = () => {
   const fetchDoctorDetails = async () => {
     setLoading(true);
     try {
+      if (!doctorId) throw new Error('Doctor ID is missing');
       const response = await DoctorService.getDoctorById(doctorId);
       setDoctor(response.data);
       setError(null);
@@ -70,6 +72,10 @@ const DoctorDetails = () => {
     setSlotLoading(true);
     try {
       // Fetch available appointment slots for this doctor on the selected date
+      if (!doctorId) {
+        setAppointmentSlots([]);
+        return;
+      }
       const response = await AppointmentService.getAvailableSlotsByDoctorAndDate(doctorId, selectedDate);
       setAppointmentSlots(response.data || []);
       setError(null);
@@ -228,7 +234,7 @@ const DoctorDetails = () => {
             </div>
           </div>
           
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          {/* <div className="bg-white rounded-lg shadow-md overflow-hidden">
             <div className="p-6">
               <h2 className="text-2xl font-semibold mb-6 flex items-center">
                 <FaCalendarAlt className="mr-2 text-blue-500" />
@@ -300,7 +306,7 @@ const DoctorDetails = () => {
                 </div>
               )}
             </div>
-          </div>
+          </div> */}
         </>
       ) : null}
     </div>
