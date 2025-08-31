@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import AuthService from '../../services/AuthService';
+import AuthService from '../../../services/AuthService';
 
-const AllDoctors = () => {
+const BookAppointment = () => {
   const [doctors, setDoctors] = useState([]);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [selectedDate, setSelectedDate] = useState('');
@@ -12,8 +11,6 @@ const AllDoctors = () => {
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
-  const [specialtyFilter, setSpecialtyFilter] = useState('');
-  const [specialties, setSpecialties] = useState([]);
   const navigate = useNavigate();
 
   // On component mount, fetch all doctors
@@ -27,10 +24,6 @@ const AllDoctors = () => {
           }
         });
         setDoctors(response.data);
-        
-        // Extract unique specialties for filtering
-        const uniqueSpecialties = [...new Set(response.data.map(doctor => doctor.specialization))];
-        setSpecialties(uniqueSpecialties);
       } catch (error) {
         console.error('Error fetching doctors:', error);
         setErrorMessage('Failed to load doctors. Please try again.');
@@ -115,14 +108,6 @@ const AllDoctors = () => {
     if (selectedDoctor) fetchAvailableSlots();
   };
 
-  // Handle specialty filter
-  const handleSpecialtyFilter = (specialty) => {
-    setSpecialtyFilter(specialty);
-    setSelectedDoctor(null);
-    setAvailableSlots([]);
-    setSelectedDate('');
-  };
-
   // Format time from ISO string to readable format
   const formatAppointmentTime = (isoString) => {
     const date = new Date(isoString);
@@ -134,13 +119,6 @@ const AllDoctors = () => {
 
   // Book an appointment
   const bookAppointment = async (appointmentId) => {
-    // Check if user is logged in as patient
-    const userRole = AuthService.getUserRole();
-    if (userRole !== 'PATIENT') {
-      setErrorMessage('Please log in as a patient to book appointments.');
-      return;
-    }
-
     try {
       setLoading(true);
       setSuccessMessage('');
@@ -178,10 +156,10 @@ const AllDoctors = () => {
       // Remove the booked slot from available slots
       setAvailableSlots(availableSlots.filter(slot => slot.id !== appointmentId));
       
-      // Clear success message after 3 seconds
+      // Redirect to dashboard after a delay
       setTimeout(() => {
-        setSuccessMessage('');
-      }, 3000);
+        navigate('/patient-dashboard');
+      }, 2000);
       
     } catch (error) {
       console.error('Error booking appointment:', error);
@@ -194,11 +172,6 @@ const AllDoctors = () => {
       setLoading(false);
     }
   };
-
-  // Filter doctors based on specialty
-  const filteredDoctors = doctors.filter(doctor => {
-    return specialtyFilter === '' || doctor.specialization === specialtyFilter;
-  });
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -217,38 +190,6 @@ const AllDoctors = () => {
           <p>{errorMessage}</p>
         </div>
       )}
-
-      {/* Specialty Filter */}
-      <div className="bg-white shadow-md rounded-lg overflow-hidden mb-6">
-        <div className="p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Filter by Specialty</h2>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => handleSpecialtyFilter('')}
-              className={`py-2 px-4 rounded-md text-sm transition ${
-                specialtyFilter === '' 
-                ? 'bg-blue-500 text-white' 
-                : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-              }`}
-            >
-              All Specialties
-            </button>
-            {specialties.map((specialty, index) => (
-              <button
-                key={index}
-                onClick={() => handleSpecialtyFilter(specialty)}
-                className={`py-2 px-4 rounded-md text-sm transition ${
-                  specialtyFilter === specialty 
-                  ? 'bg-blue-500 text-white' 
-                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                }`}
-              >
-                {specialty}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
       
       <div className="bg-white shadow-md rounded-lg overflow-hidden mb-6">
         <div className="p-6">
@@ -260,7 +201,7 @@ const AllDoctors = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredDoctors.map(doctor => (
+              {doctors.map(doctor => (
                 <div 
                   key={doctor.id}
                   onClick={() => handleDoctorSelect(doctor)}
@@ -277,7 +218,6 @@ const AllDoctors = () => {
                     <div>
                       <h3 className="font-semibold text-gray-800">Dr. {doctor.name}</h3>
                       <p className="text-sm text-gray-600">{doctor.specialization}</p>
-                      <p className="text-xs text-gray-500">{doctor.email}</p>
                     </div>
                   </div>
                 </div>
@@ -285,9 +225,9 @@ const AllDoctors = () => {
             </div>
           )}
           
-          {!filteredDoctors.length && !loading && (
+          {!doctors.length && !loading && (
             <div className="text-center p-4 border border-gray-200 rounded">
-              <p className="text-gray-600">No doctors found for the selected specialty. Please try another specialty.</p>
+              <p className="text-gray-600">No doctors found. Please try again later.</p>
             </div>
           )}
         </div>
@@ -355,4 +295,4 @@ const AllDoctors = () => {
   );
 };
 
-export default AllDoctors;
+export default BookAppointment;

@@ -106,7 +106,8 @@ import NavBar from './commonpages/components/NavBar';
 import Home from './commonpages/pages/Home';
 import About from './commonpages/pages/About';
 import Contact from './commonpages/pages/Contact';
-import AllDoctors from './commonpages/pages/AllDoctors';
+import AllDoctors from './clinic/pages/AllDoctors';
+import DoctorDetails from './clinic/pages/DoctorDetails';
 import Footer from './commonpages/components/Footer';
 import AuthPopups from './commonpages/popups/AuthPopups';
 import AdminDashboard from './clinic/adminpages/pages/AdminDashboard';
@@ -115,10 +116,16 @@ import AdminDoctors from './clinic/adminpages/pages/AdminDoctors';
 import AdminPatients from './clinic/adminpages/pages/AdminPatients';
 import RegisterUser from './clinic/adminpages/pages/RegisterUser';
 import DoctorDashboard from './clinic/doctorpages/pages/DoctorDashboard';
+import DoctorAppointments from './clinic/doctorpages/pages/DoctorAppointments';
+import DoctorAppointmentSlots from './clinic/doctorpages/pages/DoctorAppointmentSlots';
 import DoctorProfile from './clinic/doctorpages/pages/DoctorProfile';
 import AdminProtectedRoutes from './utils/AdminProtectedRoutes';
 import ReceptionistDashboard from './clinic/receptionistpages/pages/ReceptionistDashboard';
 import PatientProfile from './clinic/patientpages/pages/PatientProfile';
+import PatientDashboard from './clinic/patientpages/pages/PatientDashboard';
+import BookAppointment from './clinic/patientpages/pages/BookAppointment';
+import AllAppointments from './clinic/patientpages/pages/AllAppointments';
+import PatientLayout from './clinic/patientpages/components/PatientLayout';
 import ProtectedRoutes from './utils/ProtectedRoutes';
 
 const App = () => {
@@ -140,6 +147,7 @@ const App = () => {
         />
         <Route path="/about" element={<About />} />
         <Route path="/doctors" element={<AllDoctors />} />
+        <Route path="/doctors/:doctorId" element={<DoctorDetails />} />
         <Route path="/contact" element={<Contact />} />
 
 
@@ -161,6 +169,8 @@ const App = () => {
         {/* Doctor Routes */}
         <Route element={<ProtectedRoutes allowedRole="DOCTOR" />}>
           <Route path="/doctor-dashboard" element={<DoctorDashboard />} />
+          <Route path="/doctor-appointments" element={<DoctorAppointments />} />
+          <Route path="/doctor-slots" element={<DoctorAppointmentSlots />} />
           <Route path="/doctor-profile" element={<DoctorProfile />} />
         </Route>
         
@@ -171,7 +181,13 @@ const App = () => {
         
         {/* Patient Routes */}
         <Route element={<ProtectedRoutes allowedRole="PATIENT" />}>
-          <Route path="/patient-profile" element={<PatientProfile />} />
+          <Route element={<PatientLayout />}>
+            <Route path="/patient-dashboard" element={<PatientDashboard />} />
+            <Route path="/book-appointment" element={<BookAppointment />} />
+            <Route path="/all-appointments" element={<AllAppointments />} />
+            <Route path="/patient-profile" element={<PatientProfile />} />
+            <Route path="/medical-records" element={<div className="p-6">Medical Records Coming Soon</div>} />
+          </Route>
         </Route>
       </Routes>
       <AuthPopups 

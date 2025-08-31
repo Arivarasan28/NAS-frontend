@@ -11,18 +11,18 @@ const PatientProfile = () => {
   useEffect(() => {
     const fetchPatientData = async () => {
       try {
-        // Get userId from token
+        // Get userId from AuthService
         const userId = AuthService.getUserId();
         
         if (!userId) {
-          setError('User ID not found. Please login again.');
+          setError('User ID not found. Please login again as a patient.');
           setLoading(false);
           return;
         }
         
-        console.log('Fetching patient data for user ID:', userId);
+        console.log('Using user ID from localStorage:', userId);
         
-        // Fetch patient data
+        // Fetch patient data using userId
         const response = await axios.get(`http://localhost:8081/api/patients/user/${userId}`, {
           headers: {
             'Authorization': `Bearer ${AuthService.getToken()}`
@@ -32,24 +32,20 @@ const PatientProfile = () => {
         console.log('Patient data received:', response.data);
         setPatient(response.data);
         
-        // Only fetch appointments if we have a patient ID
-        if (response.data && response.data.id) {
-          try {
-            // Fetch patient appointments
-            const appointmentsResponse = await axios.get(`http://localhost:8081/api/appointments/patient/${response.data.id}`, {
-              headers: {
-                'Authorization': `Bearer ${AuthService.getToken()}`
-              }
-            });
-            
-            console.log('Appointments received:', appointmentsResponse.data);
-            setAppointments(appointmentsResponse.data || []);
-          } catch (appointmentErr) {
-            console.error('Error fetching appointments:', appointmentErr);
-            // Don't fail the whole page if just appointments fail
-            setAppointments([]);
-          }
-        } else {
+        // Use the patientId from the response
+        try {
+          // Fetch patient appointments using the actual patient ID from the response
+          const appointmentsResponse = await axios.get(`http://localhost:8081/api/appointments/patient/${response.data.id}`, {
+            headers: {
+              'Authorization': `Bearer ${AuthService.getToken()}`
+            }
+          });
+          
+          console.log('Appointments received:', appointmentsResponse.data);
+          setAppointments(appointmentsResponse.data || []);
+        } catch (appointmentErr) {
+          console.error('Error fetching appointments:', appointmentErr);
+          // Don't fail the whole page if just appointments fail
           setAppointments([]);
         }
       } catch (err) {
