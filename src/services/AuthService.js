@@ -54,6 +54,49 @@ class AuthService {
   }
   
   /**
+   * Register user as PATIENT and return user data with token
+   * @param {string} username
+   * @param {string} email
+   * @param {string} password
+   * @returns {Promise}
+   */
+  async register(username, email, password) {
+    const response = await axios.post(`${API_URL}/register`, { 
+      username, 
+      email, 
+      password, 
+      role: 'PATIENT'
+    });
+
+    if (response.data.token) {
+      const token = response.data.token;
+      // Persist auth like login
+      localStorage.setItem('token', token);
+      localStorage.setItem('userRole', response.data.role);
+      localStorage.setItem('userId', response.data.userId);
+
+      try {
+        const decodedToken = jwtDecode(token);
+        if (decodedToken.userId) {
+          localStorage.setItem('userId', decodedToken.userId);
+        }
+        if (decodedToken.role) {
+          localStorage.setItem('userRole', decodedToken.role);
+        }
+        if (decodedToken.exp) {
+          localStorage.setItem('tokenExpiration', decodedToken.exp * 1000);
+        }
+      } catch (error) {
+        console.error('Error decoding token:', error);
+      }
+
+      this.setAuthHeader(token);
+    }
+
+    return response.data;
+  }
+  
+  /**
    * Logout user by removing stored data
    */
   logout() {
