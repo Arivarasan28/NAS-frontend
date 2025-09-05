@@ -43,6 +43,16 @@ const AdminSidebar = () => {
           </li>
           <li>
             <NavLink 
+              to="/admin-specializations" 
+              className={({ isActive }) => 
+                `block py-2 px-4 rounded transition ${isActive ? 'bg-blue-600' : 'hover:bg-gray-700'}`
+              }
+            >
+              Specializations
+            </NavLink>
+          </li>
+          <li>
+            <NavLink 
               to="/admin-patients" 
               className={({ isActive }) => 
                 `block py-2 px-4 rounded transition ${isActive ? 'bg-blue-600' : 'hover:bg-gray-700'}`
@@ -68,3 +78,4 @@ const AdminSidebar = () => {
 };
 
 export default AdminSidebar;
+

@@ -115,6 +115,7 @@ import AdminAppointments from './clinic/adminpages/pages/AdminAppointments';
 import AdminDoctors from './clinic/adminpages/pages/AdminDoctors';
 import AdminPatients from './clinic/adminpages/pages/AdminPatients';
 import RegisterUser from './clinic/adminpages/pages/RegisterUser';
+import AdminSpecializations from './clinic/adminpages/pages/AdminSpecializations';
 import DoctorDashboard from './clinic/doctorpages/pages/DoctorDashboard';
 import DoctorAppointments from './clinic/doctorpages/pages/DoctorAppointments';
 import DoctorAppointmentSlots from './clinic/doctorpages/pages/DoctorAppointmentSlots';
@@ -172,6 +173,7 @@ const App = () => {
           <Route path="/admin-doctors" element={<AdminDoctors />} />
           <Route path="/admin-patients" element={<AdminPatients />} />
           <Route path="/admin-register-user" element={<RegisterUser />} />
+          <Route path="/admin-specializations" element={<AdminSpecializations />} />
         </Route>
 
         {/* Doctor Routes */}

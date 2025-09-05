@@ -3,6 +3,8 @@ import DoctorService from '../../../services/DoctorService';
 import { FaEdit, FaTrash, FaPlus, FaClock, FaSave, FaTimes } from 'react-icons/fa';
 import AdminLayout from '../components/AdminLayout';
 import WorkingHourService from '../../../services/WorkingHourService';
+import SpecializationService from '../../../services/SpecializationService';
+import { Link } from 'react-router-dom';
 
 const AdminDoctors = () => {
   const [doctors, setDoctors] = useState([]);
@@ -13,6 +15,7 @@ const AdminDoctors = () => {
   const [formData, setFormData] = useState({
     name: '',
     specialization: '',
+    specializationNames: [],
     email: '',
     phone: '',
     fee: '',
@@ -26,9 +29,14 @@ const AdminDoctors = () => {
   const [editingHour, setEditingHour] = useState(null); // object or null
   const [hourForm, setHourForm] = useState({ dayOfWeek: 'MONDAY', startTime: '09:00', endTime: '17:00', sequence: 1 });
   const DAYS = ['MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY','SUNDAY'];
+  // Specializations
+  const [specializations, setSpecializations] = useState([]);
+  const [specError, setSpecError] = useState(null);
+  const [specLoading, setSpecLoading] = useState(false);
 
   useEffect(() => {
     fetchDoctors();
+    fetchSpecializations();
   }, []);
 
   const fetchDoctors = async () => {
@@ -45,9 +53,35 @@ const AdminDoctors = () => {
     }
   };
 
+  const fetchSpecializations = async () => {
+    setSpecLoading(true);
+    setSpecError(null);
+    try {
+      const res = await SpecializationService.getAll();
+      setSpecializations(res.data || []);
+    } catch (err) {
+      setSpecError('Failed to load specializations');
+    } finally {
+      setSpecLoading(false);
+    }
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
+  };
+
+  const handleSpecializationToggle = (name, checked) => {
+    setFormData(prev => {
+      let next = new Set(prev.specializationNames || []);
+      if (checked) next.add(name); else next.delete(name);
+      const list = Array.from(next);
+      return {
+        ...prev,
+        specializationNames: list,
+        specialization: list[0] || '' // keep legacy string synced
+      };
+    });
   };
 
   const handleFileChange = (e) => {
@@ -74,7 +108,8 @@ const AdminDoctors = () => {
     setEditingDoctor(doctor);
     setFormData({
       name: doctor.name,
-      specialization: doctor.specialization,
+      specialization: doctor.specialization || (doctor.specializations && doctor.specializations[0]) || '',
+      specializationNames: doctor.specializations || (doctor.specialization ? [doctor.specialization] : []),
       email: doctor.email,
       phone: doctor.phone,
       fee: doctor.fee || '',
@@ -190,6 +225,7 @@ const AdminDoctors = () => {
     setFormData({
       name: '',
       specialization: '',
+      specializationNames: [],
       email: '',
       phone: '',
       fee: '',
@@ -231,15 +267,30 @@ const AdminDoctors = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Specialization</label>
-                <input
-                  type="text"
-                  name="specialization"
-                  value={formData.specialization}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                  required
-                />
+                <label className="block text-sm font-medium text-gray-700">Specializations</label>
+                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {specLoading ? (
+                    <span className="text-sm text-gray-500">Loading...</span>
+                  ) : (
+                    [...new Set(specializations.map(s => s.name))]
+                      .sort()
+                      .map((name) => (
+                        <label key={name} className="inline-flex items-center gap-2 p-2 border rounded">
+                          <input
+                            type="checkbox"
+                            checked={formData.specializationNames.includes(name)}
+                            onChange={(e) => handleSpecializationToggle(name, e.target.checked)}
+                          />
+                          <span>{name}</span>
+                        </label>
+                      ))
+                  )}
+                </div>
+                <div className="mt-2 flex items-center gap-3">
+                  <span className="text-xs text-gray-600">Selected: {formData.specializationNames.length > 0 ? formData.specializationNames.join(', ') : 'None'}</span>
+                  <Link to="/admin-specializations" className="text-xs text-blue-600 hover:underline whitespace-nowrap">Manage</Link>
+                </div>
+                {specError && <p className="text-xs text-red-600 mt-1">{specError}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Email</label>
@@ -325,7 +376,7 @@ const AdminDoctors = () => {
                 <React.Fragment key={doctor.id}>
                   <tr className="border-b hover:bg-gray-50">
                     <td className="py-3 px-4">{doctor.name}</td>
-                    <td className="py-3 px-4">{doctor.specialization}</td>
+                    <td className="py-3 px-4">{(doctor.specializations && doctor.specializations.length > 0) ? doctor.specializations.join(', ') : (doctor.specialization || '')}</td>
                     <td className="py-3 px-4">{doctor.email}</td>
                     <td className="py-3 px-4">{doctor.phone}</td>
                     <td className="py-3 px-4">${doctor.fee || 'N/A'}</td>

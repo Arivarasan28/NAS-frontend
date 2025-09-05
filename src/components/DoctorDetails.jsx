@@ -84,7 +84,11 @@ const DoctorDetails = ({ doctorId: propDoctorId }) => {
                 </div>
                 <div>
                   <h1 className="text-3xl font-bold mb-2">Dr. {doctor.name || ''}</h1>
-                  <p className="text-xl text-blue-600 mb-1">{doctor.specialization || 'General'}</p>
+                  <p className="text-xl text-blue-600 mb-1">
+                    {(doctor.specializations && doctor.specializations.length > 0)
+                      ? doctor.specializations.join(', ')
+                      : (doctor.specialization || 'General')}
+                  </p>
                   <p className="text-gray-600">Consultation Fee: {doctor.fee != null ? `₹${doctor.fee}` : 'Not specified'}</p>
                 </div>
               </div>
@@ -111,7 +115,7 @@ const DoctorDetails = ({ doctorId: propDoctorId }) => {
                 <div>
                   <h2 className="text-xl font-semibold mb-4">Professional Details</h2>
                   <div className="space-y-3 text-gray-600">
-                    <div><strong>Specialization:</strong> {doctor.specialization || 'Not specified'}</div>
+                    <div><strong>Specialization:</strong> {(doctor.specializations && doctor.specializations.length > 0) ? doctor.specializations.join(', ') : (doctor.specialization || 'Not specified')}</div>
                     {/* Add more fields when available in backend DTO */}
                   </div>
                 </div>
