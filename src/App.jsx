@@ -116,15 +116,17 @@ import AdminDoctors from './clinic/adminpages/pages/AdminDoctors';
 import AdminPatients from './clinic/adminpages/pages/AdminPatients';
 import RegisterUser from './clinic/adminpages/pages/RegisterUser';
 import AdminSpecializations from './clinic/adminpages/pages/AdminSpecializations';
+import AdminLeaveManagement from './clinic/adminpages/pages/AdminLeaveManagement';
 import DoctorDashboard from './clinic/doctorpages/pages/DoctorDashboard';
 import DoctorAppointments from './clinic/doctorpages/pages/DoctorAppointments';
 import DoctorAppointmentSlots from './clinic/doctorpages/pages/DoctorAppointmentSlots';
 import DoctorProfile from './clinic/doctorpages/pages/DoctorProfile';
+import DoctorLeaveManagement from './clinic/doctorpages/pages/DoctorLeaveManagement';
 import AdminProtectedRoutes from './utils/AdminProtectedRoutes';
 import ReceptionistDashboard from './clinic/receptionistpages/pages/ReceptionistDashboard';
 import PatientProfile from './clinic/patientpages/pages/PatientProfile';
 import PatientDashboard from './clinic/patientpages/pages/PatientDashboard';
-import BookAppointment from './clinic/patientpages/pages/BookAppointment';
+import BookAppointmentAutomatic from './clinic/patientpages/pages/BookAppointmentAutomatic';
 import AllAppointments from './clinic/patientpages/pages/AllAppointments';
 import PatientLayout from './clinic/patientpages/components/PatientLayout';
 import ProtectedRoutes from './utils/ProtectedRoutes';
@@ -174,6 +176,7 @@ const App = () => {
           <Route path="/admin-patients" element={<AdminPatients />} />
           <Route path="/admin-register-user" element={<RegisterUser />} />
           <Route path="/admin-specializations" element={<AdminSpecializations />} />
+          <Route path="/admin-leave-management" element={<AdminLeaveManagement />} />
         </Route>
 
         {/* Doctor Routes */}
@@ -182,6 +185,7 @@ const App = () => {
           <Route path="/doctor-appointments" element={<DoctorAppointments />} />
           <Route path="/doctor-slots" element={<DoctorAppointmentSlots />} />
           <Route path="/doctor-profile" element={<DoctorProfile />} />
+          <Route path="/doctor-leave-management" element={<DoctorLeaveManagement />} />
         </Route>
         
         {/* Receptionist Routes */}
@@ -193,7 +197,7 @@ const App = () => {
         <Route element={<ProtectedRoutes allowedRole="PATIENT" />}>
           <Route element={<PatientLayout />}>
             <Route path="/patient-dashboard" element={<PatientDashboard />} />
-            <Route path="/book-appointment" element={<BookAppointment />} />
+            <Route path="/book-appointment" element={<BookAppointmentAutomatic />} />
             <Route path="/all-appointments" element={<AllAppointments />} />
             <Route path="/patient-profile" element={<PatientProfile />} />
             <Route path="/medical-records" element={<div className="p-6">Medical Records Coming Soon</div>} />

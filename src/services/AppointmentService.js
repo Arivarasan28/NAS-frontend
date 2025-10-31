@@ -100,6 +100,41 @@ class AppointmentService {
       headers: token ? { 'Authorization': `Bearer ${token}` } : {}
     });
   }
+  
+  // ==================== SMART SLOT GENERATION ====================
+  
+  // Get smart available slots based on working hours, leaves, and appointment duration
+  getSmartAvailableSlots(doctorId, date) {
+    const token = AuthService.getToken();
+    return axios.get(`${API_URL}/slots/smart/doctor/${doctorId}/date/${date}`, {
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+    });
+  }
+  
+  // Get smart available slots for a date range
+  getSmartAvailableSlotsForRange(doctorId, startDate, endDate) {
+    const token = AuthService.getToken();
+    return axios.get(`${API_URL}/slots/smart/doctor/${doctorId}/range`, {
+      params: { startDate, endDate },
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+    });
+  }
+  
+  // Auto-generate appointment slots based on working hours
+  autoGenerateSlots(doctorId, date) {
+    const token = AuthService.getToken();
+    return axios.post(`${API_URL}/slots/auto-generate/doctor/${doctorId}/date/${date}`, {}, {
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+    });
+  }
+  
+  // Get patient appointments
+  getPatientAppointments(patientId) {
+    const token = AuthService.getToken();
+    return axios.get(`${API_URL}/patient/${patientId}`, {
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+    });
+  }
 }
 
 export default new AppointmentService();

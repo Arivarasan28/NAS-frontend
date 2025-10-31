@@ -5,6 +5,8 @@ import AdminLayout from '../components/AdminLayout';
 import WorkingHourService from '../../../services/WorkingHourService';
 import SpecializationService from '../../../services/SpecializationService';
 import { Link } from 'react-router-dom';
+import axios from 'axios';
+import AuthService from '../../../services/AuthService';
 
 const AdminDoctors = () => {
   const [doctors, setDoctors] = useState([]);
@@ -19,6 +21,10 @@ const AdminDoctors = () => {
     email: '',
     phone: '',
     fee: '',
+    appointmentDurationMinutes: 15,
+    username: '',
+    createUserAccount: false,
+    password: '',
   });
   const [profilePicture, setProfilePicture] = useState(null);
   // Working hours state
@@ -92,14 +98,63 @@ const AdminDoctors = () => {
     e.preventDefault();
     try {
       if (editingDoctor) {
+        // On edit, allow re-linking by username if provided
         await DoctorService.updateDoctor(editingDoctor.id, formData, profilePicture);
       } else {
-        await DoctorService.createDoctor(formData, profilePicture);
+        // Create flow: ensure we have a user to link
+        if (formData.createUserAccount) {
+          if (!formData.username || !formData.password) {
+            setError('Username and password are required to create a user account.');
+            return;
+          }
+          // Register DOCTOR user via auth API (AuthController returns doctorId for DOCTOR role)
+          const token = AuthService.getToken();
+          const regRes = await axios.post(
+            'http://localhost:8081/api/auth/register',
+            {
+              username: formData.username,
+              email: formData.email,
+              password: formData.password,
+              role: 'DOCTOR',
+            },
+            {
+              headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+              },
+            }
+          );
+
+          const doctorId = regRes?.data?.doctorId;
+          if (doctorId) {
+            // Update the auto-created doctor with the provided details
+            await DoctorService.updateDoctor(doctorId, formData, profilePicture);
+          } else {
+            // Fallback: if doctorId not returned, create doctor linked by username
+            await DoctorService.createDoctor(formData, profilePicture);
+          }
+        } else {
+          // If not creating user, require a username to link to an existing account
+          if (!formData.username) {
+            setError('Please provide a username to link the doctor to an existing user, or choose "Create user account".');
+            return;
+          }
+          await DoctorService.createDoctor(formData, profilePicture);
+        }
       }
       resetForm();
       fetchDoctors();
     } catch (err) {
-      setError('Failed to save doctor: ' + (err.response?.data?.message || err.message));
+      // Improve error messages for common cases
+      if (err.response?.status === 409) {
+        setError(err.response?.data?.message || 'Conflict: Username or email already exists.');
+      } else if (err.response?.status === 400) {
+        setError(err.response?.data?.message || 'Invalid input. Please check the form fields.');
+      } else if (err.response?.status === 500) {
+        setError('Server error during registration. It may be due to duplicate user/doctor linkage.');
+      } else {
+        setError('Failed to save doctor: ' + (err.response?.data?.message || err.message));
+      }
       console.error('Error saving doctor:', err);
     }
   };
@@ -113,6 +168,10 @@ const AdminDoctors = () => {
       email: doctor.email,
       phone: doctor.phone,
       fee: doctor.fee || '',
+      appointmentDurationMinutes: doctor.appointmentDurationMinutes ?? 15,
+      username: '', // not provided by API; admin can set to re-link
+      createUserAccount: false,
+      password: '',
     });
     setShowForm(true);
   };
@@ -229,6 +288,10 @@ const AdminDoctors = () => {
       email: '',
       phone: '',
       fee: '',
+      appointmentDurationMinutes: 15,
+      username: '',
+      createUserAccount: false,
+      password: '',
     });
     setProfilePicture(null);
     setEditingDoctor(null);
@@ -239,120 +302,170 @@ const AdminDoctors = () => {
     <AdminLayout>
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Manage Doctors</h1>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2"
-        >
-          {showForm ? 'Cancel' : <><FaPlus /> Add New Doctor</>}
-        </button>
-      </div>
+          <h1 className="text-2xl font-bold">Manage Doctors</h1>
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2"
+          >
+            {showForm ? 'Cancel' : <><FaPlus /> Add New Doctor</>}
+          </button>
+        </div>
 
-      {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
-
-      {showForm && (
-        <div className="bg-white shadow-md rounded p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4">{editingDoctor ? 'Edit Doctor' : 'Add New Doctor'}</h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Full Name</label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Specializations</label>
-                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {specLoading ? (
-                    <span className="text-sm text-gray-500">Loading...</span>
-                  ) : (
-                    [...new Set(specializations.map(s => s.name))]
-                      .sort()
-                      .map((name) => (
-                        <label key={name} className="inline-flex items-center gap-2 p-2 border rounded">
-                          <input
-                            type="checkbox"
-                            checked={formData.specializationNames.includes(name)}
-                            onChange={(e) => handleSpecializationToggle(name, e.target.checked)}
-                          />
-                          <span>{name}</span>
-                        </label>
-                      ))
+        {showForm && (
+          <div className="bg-white shadow-md rounded p-6 mb-6">
+            <h2 className="text-xl font-semibold mb-4">{editingDoctor ? 'Edit Doctor' : 'Add New Doctor'}</h2>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Full Name</label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Appointment Duration (minutes)</label>
+                  <input
+                    type="number"
+                    name="appointmentDurationMinutes"
+                    min="5"
+                    step="5"
+                    value={formData.appointmentDurationMinutes}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      setFormData((prev) => ({ ...prev, appointmentDurationMinutes: isNaN(v) ? '' : v }));
+                    }}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                    required
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700">Specializations</label>
+                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {specLoading ? (
+                      <span className="text-sm text-gray-500">Loading...</span>
+                    ) : (
+                      [...new Set(specializations.map(s => s.name))]
+                        .sort()
+                        .map((name) => (
+                          <label key={name} className="inline-flex items-center gap-2 p-2 border rounded">
+                            <input
+                              type="checkbox"
+                              checked={formData.specializationNames.includes(name)}
+                              onChange={(e) => handleSpecializationToggle(name, e.target.checked)}
+                            />
+                            <span>{name}</span>
+                          </label>
+                        ))
+                    )}
+                  </div>
+                  <div className="mt-2 flex items-center gap-3">
+                    <span className="text-xs text-gray-600">Selected: {formData.specializationNames.length > 0 ? formData.specializationNames.join(', ') : 'None'}</span>
+                    <Link to="/admin-specializations" className="text-xs text-blue-600 hover:underline whitespace-nowrap">Manage</Link>
+                  </div>
+                  {specError && <p className="text-xs text-red-600 mt-1">{specError}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Email</label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Phone Number</label>
+                  <input
+                    type="text"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Consultation Fee</label>
+                  <input
+                    type="number"
+                    name="fee"
+                    value={formData.fee}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Profile Picture</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700">Username (link to user)</label>
+                  <input
+                    type="text"
+                    name="username"
+                    value={formData.username}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                    placeholder="doctor's username"
+                    disabled={editingDoctor && formData.createUserAccount}
+                  />
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      id="createUserAccount"
+                      type="checkbox"
+                      checked={formData.createUserAccount}
+                      onChange={(e) => setFormData(prev => ({ ...prev, createUserAccount: e.target.checked }))}
+                      disabled={!!editingDoctor}
+                    />
+                    <label htmlFor="createUserAccount" className="text-sm text-gray-700">Create user account for this doctor</label>
+                  </div>
+                  {formData.createUserAccount && !editingDoctor && (
+                    <div className="mt-2">
+                      <label className="block text-sm font-medium text-gray-700">Password for new account</label>
+                      <input
+                        type="password"
+                        name="password"
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                        placeholder="temporary password"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">A DOCTOR user will be created using the email above and this username/password.</p>
+                    </div>
                   )}
                 </div>
-                <div className="mt-2 flex items-center gap-3">
-                  <span className="text-xs text-gray-600">Selected: {formData.specializationNames.length > 0 ? formData.specializationNames.join(', ') : 'None'}</span>
-                  <Link to="/admin-specializations" className="text-xs text-blue-600 hover:underline whitespace-nowrap">Manage</Link>
-                </div>
-                {specError && <p className="text-xs text-red-600 mt-1">{specError}</p>}
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Email</label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                  required
-                />
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
+                >
+                  {editingDoctor ? 'Update Doctor' : 'Add Doctor'}
+                </button>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Phone Number</label>
-                <input
-                  type="text"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Consultation Fee</label>
-                <input
-                  type="number"
-                  name="fee"
-                  value={formData.fee}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Profile Picture</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                />
-              </div>
-            </div>
-            <div className="flex justify-end space-x-3">
-              <button
-                type="button"
-                onClick={resetForm}
-                className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
-              >
-                {editingDoctor ? 'Update Doctor' : 'Add Doctor'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+            </form>
+          </div>
+        )}
 
       {loading ? (
         <div className="text-center py-4">Loading doctors...</div>
@@ -368,6 +481,7 @@ const AdminDoctors = () => {
                 <th className="py-3 px-4 text-left">Email</th>
                 <th className="py-3 px-4 text-left">Phone</th>
                 <th className="py-3 px-4 text-left">Fee</th>
+                <th className="py-3 px-4 text-left">Duration</th>
                 <th className="py-3 px-4 text-center">Actions</th>
               </tr>
             </thead>
@@ -380,6 +494,7 @@ const AdminDoctors = () => {
                     <td className="py-3 px-4">{doctor.email}</td>
                     <td className="py-3 px-4">{doctor.phone}</td>
                     <td className="py-3 px-4">${doctor.fee || 'N/A'}</td>
+                    <td className="py-3 px-4">{doctor.appointmentDurationMinutes ?? 15} min</td>
                     <td className="py-3 px-4 text-center space-x-3">
                       <button
                         onClick={() => handleEdit(doctor)}
@@ -406,7 +521,7 @@ const AdminDoctors = () => {
                   </tr>
                   {expandedDoctorId === doctor.id && (
                     <tr className="bg-gray-50">
-                      <td colSpan={6} className="py-4 px-6">
+                      <td colSpan={7} className="py-4 px-6">
                         <div className="flex items-center justify-between mb-3">
                           <h3 className="font-semibold">Working Hours</h3>
                           {whLoading && <span className="text-sm text-gray-500">Loading...</span>}

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import SpecializationService from '../../../services/SpecializationService';
+import AdminLayout from '../components/AdminLayout';
 
 const emptyForm = { name: '', description: '' };
 
@@ -74,7 +75,8 @@ const AdminSpecializations = () => {
   };
 
   return (
-    <div className="p-6">
+    <AdminLayout>
+      <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">Specializations</h1>
 
       {error && (
@@ -154,7 +156,8 @@ const AdminSpecializations = () => {
           </table>
         )}
       </div>
-    </div>
+      </div>
+    </AdminLayout>
   );
 };
 

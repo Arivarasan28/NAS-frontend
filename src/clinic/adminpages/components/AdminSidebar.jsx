@@ -71,6 +71,16 @@ const AdminSidebar = () => {
               Register User
             </NavLink>
           </li>
+          <li>
+            <NavLink 
+              to="/admin-leave-management" 
+              className={({ isActive }) => 
+                `block py-2 px-4 rounded transition ${isActive ? 'bg-blue-600' : 'hover:bg-gray-700'}`
+              }
+            >
+              Leave Management
+            </NavLink>
+          </li>
         </ul>
       </nav>
     </div>
