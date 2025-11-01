@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import AuthService from '../../services/AuthService';
 import DoctorCard from '../../components/DoctorCard';
@@ -11,6 +11,7 @@ const AllDoctors = ({ setIsAuthPopupsOpen, setAuthPopupType }) => {
   const [loading, setLoading] = useState(false);
   const [specialtyFilter, setSpecialtyFilter] = useState('');
   const [specialties, setSpecialties] = useState([]);
+  const location = useLocation();
   const navigate = useNavigate();
 
   // Modal state for doctor details popup
@@ -56,6 +57,15 @@ const AllDoctors = ({ setIsAuthPopupsOpen, setAuthPopupType }) => {
 
     fetchDoctors();
   }, []);
+
+  // Pick up specialization from query string and set initial filter
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const spec = params.get('specialization') || '';
+    if (spec !== specialtyFilter) {
+      setSpecialtyFilter(spec);
+    }
+  }, [location.search]);
 
 
   // Unified action when clicking the card button

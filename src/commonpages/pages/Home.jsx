@@ -1,11 +1,16 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import doctor from "../../assets/images/doctor.png";
 import AuthService from '../../services/AuthService';
+import SpecializationService from '../../services/SpecializationService';
+import DoctorService from '../../services/DoctorService';
 
 const Home = ({ setIsAuthPopupsOpen, setAuthPopupType }) => {
   
   const navigate = useNavigate();
+  const [specialities, setSpecialities] = useState([]);
+  const [doctors, setDoctors] = useState([]);
+  const [loading, setLoading] = useState({ specs: false, docs: false });
 
   const handleBookAppointmentClick = () => {
     const isLoggedIn = AuthService.isLoggedIn();
@@ -18,20 +23,54 @@ const Home = ({ setIsAuthPopupsOpen, setAuthPopupType }) => {
     }
   };
 
-  const specialities = [
-    { name: 'General Physician', icon: '👨‍⚕️' },
-    { name: 'Cardiologist', icon: '❤️' },
-    { name: 'Dermatologist', icon: '🩺' },
-    { name: 'Pediatrician', icon: '👶' },
-    { name: 'Neurologist', icon: '🧠' },
-    { name: 'Gastroenterologist', icon: '🍴' },
-  ];
+  const handleBookNow = (doc) => {
+    const isLoggedIn = AuthService.isLoggedIn();
+    const role = AuthService.getUserRole();
+    if (isLoggedIn && role === 'PATIENT') {
+      const target = doc?.id ? `/book-appointment?doctorId=${doc.id}` : '/book-appointment';
+      navigate(target);
+    } else {
+      setAuthPopupType('login');
+      setIsAuthPopupsOpen(true);
+    }
+  };
 
-  const doctors = new Array(9).fill({
-    name: 'Dr. Richard James',
-    specialty: 'General Physician',
-    image: doctor,
-  });
+  useEffect(() => {
+    const loadSpecializations = async () => {
+      try {
+        setLoading(prev => ({ ...prev, specs: true }));
+        const res = await SpecializationService.getAll();
+        // Expecting array of { id, name, description }
+        setSpecialities((res.data || []).map(s => ({ name: s.name })));
+      } catch (e) {
+        console.error('Failed to load specializations', e);
+      } finally {
+        setLoading(prev => ({ ...prev, specs: false }));
+      }
+    };
+
+    const loadDoctors = async () => {
+      try {
+        setLoading(prev => ({ ...prev, docs: true }));
+        // Attempt with auth header, but endpoint is public; safe to call directly
+        const res = await DoctorService.getAllDoctors();
+        setDoctors(res.data || []);
+      } catch (e) {
+        console.error('Failed to load doctors', e);
+        setDoctors([]);
+      } finally {
+        setLoading(prev => ({ ...prev, docs: false }));
+      }
+    };
+
+    loadSpecializations();
+    loadDoctors();
+  }, []);
+
+  const handleSpecialityClick = (name) => {
+    if (!name) return;
+    navigate(`/doctors?specialization=${encodeURIComponent(name)}`);
+  };
 
   return (
     <div className="bg-gray-100 py-8">
@@ -50,38 +89,50 @@ const Home = ({ setIsAuthPopupsOpen, setAuthPopupType }) => {
       {/* Specialities Section */}
       <section className="py-12">
         <h2 className="text-center text-2xl font-bold mb-8">Find by Speciality</h2>
-        <div className="flex justify-center gap-8">
-          {specialities.map((speciality, index) => (
-            <div key={index} className="flex flex-col items-center">
-              <div className="text-4xl">{speciality.icon}</div>
-              <p className="mt-2 text-sm font-semibold">{speciality.name}</p>
-            </div>
-          ))}
-        </div>
+        {loading.specs ? (
+          <div className="text-center text-gray-600">Loading specialities...</div>
+        ) : (
+          <div className="flex flex-wrap justify-center gap-4 px-4">
+            {specialities.slice(0, 10).map((speciality, index) => (
+              <button
+                key={index}
+                onClick={() => handleSpecialityClick(speciality.name)}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-full shadow-sm hover:shadow transition"
+                title={`Find ${speciality.name}`}
+              >
+                <span className="text-sm font-medium">{speciality.name}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Top Doctors Section */}
       <section className="py-12 px-40">
         <h2 className="text-center text-2xl font-bold mb-8">Top Doctors to Book</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {doctors.map((doctor, index) => (
-            <div
-              key={index}
-              className="bg-white rounded-lg shadow-md p-4 flex flex-col items-center transform transition-transform duration-300 hover:scale-105"
-            >
-              <img
-                src={doctor.image}
-                alt={doctor.name}
-                className="w-24 h-24 rounded-full mb-4"
-              />
-              <h3 className="text-lg font-semibold">{doctor.name}</h3>
-              <p className="text-gray-600">{doctor.specialty}</p>
-              <button onClick={handleBookAppointmentClick} className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
-                Book Now
-              </button>
-            </div>
-          ))}
-        </div>
+        {loading.docs ? (
+          <div className="text-center text-gray-600">Loading top doctors...</div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {doctors.slice(0, 8).map((doc, index) => (
+              <div
+                key={doc.id ?? index}
+                className="bg-white rounded-lg shadow-md p-4 flex flex-col items-center transform transition-transform duration-300 hover:scale-105"
+              >
+                <img
+                  src={doctor}
+                  alt={doc.name || 'Doctor'}
+                  className="w-24 h-24 rounded-full mb-4 object-cover"
+                />
+                <h3 className="text-lg font-semibold">{doc.name || 'Doctor'}</h3>
+                <p className="text-gray-600">{doc.specialization || (doc.specializations && doc.specializations[0]) || 'General'}</p>
+                <button onClick={() => handleBookNow(doc)} className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                  Book Now
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="flex justify-center mt-8">
           <button 
             onClick={() => navigate('/doctors')}

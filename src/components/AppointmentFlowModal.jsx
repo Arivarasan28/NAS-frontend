@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import AuthService from '../services/AuthService';
+import PaymentService from '../services/PaymentService';
+import ReservationService from '../services/ReservationService';
+import PaymentModal from './PaymentModal';
 
 const AppointmentFlowModal = ({ isOpen, onClose, doctor }) => {
   const [selectedDate, setSelectedDate] = useState('');
@@ -8,6 +11,10 @@ const AppointmentFlowModal = ({ isOpen, onClose, doctor }) => {
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [selectedSlot, setSelectedSlot] = useState(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [bookingInProgress, setBookingInProgress] = useState(false);
+  const consultationFee = 500.00; // Default consultation fee
 
   // Dates for next 14 days
   const nextTwoWeeks = useMemo(() => {
@@ -32,6 +39,9 @@ const AppointmentFlowModal = ({ isOpen, onClose, doctor }) => {
       setLoading(false);
       setSuccessMessage('');
       setErrorMessage('');
+      setSelectedSlot(null);
+      setShowPaymentModal(false);
+      setBookingInProgress(false);
     }
   }, [isOpen]);
 
@@ -106,11 +116,10 @@ const AppointmentFlowModal = ({ isOpen, onClose, doctor }) => {
     return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   };
 
-  const bookAppointment = async (appointmentId) => {
+  const handleSlotSelection = async (slot) => {
     try {
-      setLoading(true);
-      setSuccessMessage('');
       setErrorMessage('');
+      setLoading(true);
 
       const userId = AuthService.getUserId();
       if (!userId) {
@@ -119,30 +128,107 @@ const AppointmentFlowModal = ({ isOpen, onClose, doctor }) => {
         return;
       }
 
-      // Get patient id by user id
-      const patientResp = await axios.get(`http://localhost:8081/api/patients/user/${userId}` , {
+      // Get patient ID
+      const patientResp = await axios.get(`http://localhost:8081/api/patients/user/${userId}`, {
         headers: { Authorization: `Bearer ${AuthService.getToken()}` }
       });
       const patientId = patientResp.data.id;
 
-      await axios.post(
-        `http://localhost:8081/api/appointments/book/${appointmentId}/patient/${patientId}`,
-        {},
-        { headers: { Authorization: `Bearer ${AuthService.getToken()}` } }
+      // Reserve the slot before opening payment modal
+      try {
+        await ReservationService.reserveSlot(slot.id, patientId);
+        
+        // Reservation successful, open payment modal
+        setSelectedSlot(slot);
+        setShowPaymentModal(true);
+      } catch (reserveError) {
+        if (reserveError.response?.status === 409) {
+          setErrorMessage('This slot is currently being booked by another user. Please select a different time slot.');
+          // Refresh slots to show updated availability
+          fetchAvailableSlots(selectedDate);
+        } else {
+          setErrorMessage('Failed to reserve slot. Please try again.');
+        }
+      }
+    } catch (error) {
+      console.error('Error in slot selection:', error);
+      setErrorMessage('Failed to process your request. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePaymentSuccess = async (paymentData) => {
+    try {
+      setBookingInProgress(true);
+      setErrorMessage('');
+
+      const userId = AuthService.getUserId();
+      if (!userId) {
+        setErrorMessage('User ID not found. Please login again.');
+        setShowPaymentModal(false);
+        setBookingInProgress(false);
+        return;
+      }
+
+      // Get patient id by user id
+      const patientResp = await axios.get(`http://localhost:8081/api/patients/user/${userId}`, {
+        headers: { Authorization: `Bearer ${AuthService.getToken()}` }
+      });
+      const patientId = patientResp.data.id;
+
+      // Book appointment with payment
+      const bookingWithPaymentData = {
+        appointmentId: selectedSlot.id,
+        patientId: patientId,
+        paymentMethod: paymentData.paymentMethod,
+        amount: consultationFee,
+        cardDetails: paymentData.cardDetails,
+        notes: paymentData.notes
+      };
+
+      const response = await PaymentService.bookAppointmentWithPayment(bookingWithPaymentData);
+
+      setSuccessMessage(
+        paymentData.paymentMethod === 'CASH'
+          ? 'Appointment booked successfully! Please bring cash payment to the clinic.'
+          : 'Appointment booked and payment completed successfully!'
       );
 
-      setSuccessMessage('Appointment booked successfully!');
-      // Remove the booked slot from available slots
-      setSlots(prev => prev.map(s => (s.id === appointmentId ? { ...s, status: 'BOOKED' } : s)));
+      // Update the slot status in the UI
+      setSlots(prev => prev.map(s => (s.id === selectedSlot.id ? { ...s, status: 'BOOKED' } : s)));
+
+      // Close payment modal
+      setShowPaymentModal(false);
+      setSelectedSlot(null);
+
+      // Redirect after delay
+      setTimeout(() => {
+        if (typeof onClose === 'function') {
+          onClose();
+        }
+        // Optionally navigate to patient dashboard
+        // window.location.href = '/patient-dashboard';
+      }, 3000);
+
     } catch (err) {
       console.error('Booking error:', err);
-      if (err.response && err.response.data && err.response.data.message) {
-        setErrorMessage(`Failed to book appointment: ${err.response.data.message}`);
+      
+      // Handle specific error cases
+      if (err.response?.status === 409 || err.response?.data?.error === 'SLOT_UNAVAILABLE') {
+        setErrorMessage('This slot was just booked by another user. Please select a different time slot.');
+        // Refresh slots
+        fetchAvailableSlots(selectedDate);
+      } else if (err.response?.data?.message) {
+        setErrorMessage(`Booking failed: ${err.response.data.message}`);
       } else {
         setErrorMessage('Failed to book appointment. Please try again.');
       }
+      
+      setShowPaymentModal(false);
+      setSelectedSlot(null);
     } finally {
-      setLoading(false);
+      setBookingInProgress(false);
     }
   };
 
@@ -208,16 +294,16 @@ const AppointmentFlowModal = ({ isOpen, onClose, doctor }) => {
                         </span>
                       </div>
                       <button
-                        onClick={() => bookAppointment(slot.id)}
+                        onClick={() => handleSlotSelection(slot)}
                         className={`w-full rounded-md py-2 text-sm transition ${
                           isAvailable
                             ? 'bg-blue-500 hover:bg-blue-600 text-white'
                             : 'bg-gray-100 text-gray-500 cursor-not-allowed'
                         }`}
-                        disabled={loading || !isAvailable}
+                        disabled={loading || !isAvailable || bookingInProgress}
                         title={isAvailable ? 'Book this slot' : 'Not available'}
                       >
-                        {isAvailable ? 'Book' : 'Unavailable'}
+                        {isAvailable ? 'Book Now' : 'Unavailable'}
                       </button>
                     </div>
                   );
@@ -235,6 +321,46 @@ const AppointmentFlowModal = ({ isOpen, onClose, doctor }) => {
           </div>
         </div>
       </div>
+
+      {/* Payment Modal */}
+      {showPaymentModal && selectedSlot && (
+        <PaymentModal
+          isOpen={showPaymentModal}
+          onClose={async () => {
+            if (!bookingInProgress) {
+              // Release reservation when modal is closed without payment
+              if (selectedSlot) {
+                try {
+                  const userId = AuthService.getUserId();
+                  if (userId) {
+                    const patientResp = await axios.get(`http://localhost:8081/api/patients/user/${userId}`, {
+                      headers: { Authorization: `Bearer ${AuthService.getToken()}` }
+                    });
+                    const patientId = patientResp.data.id;
+                    await ReservationService.releaseReservation(selectedSlot.id, patientId);
+                  }
+                } catch (error) {
+                  console.error('Error releasing reservation:', error);
+                }
+              }
+              setShowPaymentModal(false);
+              setSelectedSlot(null);
+            }
+          }}
+          onPaymentSuccess={handlePaymentSuccess}
+          appointmentDetails={{
+            doctorName: `Dr. ${doctor.firstName || ''} ${doctor.lastName || ''}`,
+            date: new Date(selectedSlot.appointmentTime).toLocaleDateString('en-US', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            }),
+            time: formatTime(selectedSlot.appointmentTime)
+          }}
+          amount={consultationFee}
+        />
+      )}
     </div>
   );
 };
