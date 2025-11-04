@@ -14,7 +14,16 @@ const AppointmentFlowModal = ({ isOpen, onClose, doctor }) => {
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [bookingInProgress, setBookingInProgress] = useState(false);
-  const consultationFee = 500.00; // Default consultation fee
+  // Compute consultation fee from selected slot -> doctor -> fallback
+  const consultationFee = useMemo(() => {
+    const slotFee = selectedSlot?.appointmentFee;
+    const doctorFee = doctor?.fee;
+    return (typeof slotFee === 'number' || typeof slotFee === 'string')
+      ? Number(slotFee)
+      : (typeof doctorFee === 'number' || typeof doctorFee === 'string')
+        ? Number(doctorFee)
+        : 500.00;
+  }, [selectedSlot, doctor]);
 
   // Dates for next 14 days
   const nextTwoWeeks = useMemo(() => {
