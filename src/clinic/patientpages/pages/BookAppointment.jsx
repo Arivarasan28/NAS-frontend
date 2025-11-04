@@ -20,7 +20,16 @@ const BookAppointment = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedSlotForPayment, setSelectedSlotForPayment] = useState(null);
   const [bookingInProgress, setBookingInProgress] = useState(false);
-  const consultationFee = 500.00; // Default consultation fee
+  // Determine fee from slot -> doctor -> fallback
+  const consultationFee = React.useMemo(() => {
+    const slotFee = selectedSlotForPayment?.appointmentFee;
+    const doctorFee = selectedDoctor?.fee;
+    return (typeof slotFee === 'number' || typeof slotFee === 'string')
+      ? Number(slotFee)
+      : (typeof doctorFee === 'number' || typeof doctorFee === 'string')
+        ? Number(doctorFee)
+        : 500.00;
+  }, [selectedSlotForPayment, selectedDoctor]);
   const navigate = useNavigate();
 
   // Modal state for doctor details popup
@@ -420,7 +429,7 @@ const BookAppointment = () => {
           }}
           onPaymentSuccess={handlePaymentSuccess}
           appointmentDetails={{
-            doctorName: `Dr. ${selectedDoctor.firstName || ''} ${selectedDoctor.lastName || ''}`,
+            doctorName: (`Dr. ${selectedDoctor?.firstName || ''} ${selectedDoctor?.lastName || ''}`).trim() || `Dr. ${selectedDoctor?.name || ''}`,
             date: new Date(selectedSlotForPayment.appointmentTime).toLocaleDateString('en-US', {
               weekday: 'long',
               year: 'numeric',

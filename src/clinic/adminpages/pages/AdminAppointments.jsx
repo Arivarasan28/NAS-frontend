@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import AppointmentService from '../../../services/AppointmentService';
 import DoctorService from '../../../services/DoctorService';
 import PatientService from '../../../services/PatientService';
-import { FaEdit, FaTrash, FaPlus, FaCalendarAlt } from 'react-icons/fa';
+import { FaPlus } from 'react-icons/fa';
 import AdminLayout from '../components/AdminLayout';
+import { AppointmentList } from '../../../components/AppointmentList';
 
 const AdminAppointments = () => {
   const [appointments, setAppointments] = useState([]);
@@ -23,22 +24,45 @@ const AdminAppointments = () => {
   });
 
   useEffect(() => {
-    fetchAppointments();
-    fetchDoctors();
-    fetchPatients();
+    fetchAll();
   }, []);
 
-  const fetchAppointments = async () => {
+  const fetchAll = async () => {
     setLoading(true);
     try {
+      await Promise.all([
+        fetchAppointments(),
+        fetchDoctors(),
+        fetchPatients()
+      ]);
+    } catch (err) {
+      console.error('Error fetching data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchAppointments = async () => {
+    try {
       const response = await AppointmentService.getAllAppointments();
-      setAppointments(response.data);
+      const appointmentsData = response.data;
+      
+      // Enrich appointments with full patient and doctor data if needed
+      const enrichedAppointments = appointmentsData.map(apt => {
+        // If patient/doctor objects are missing or incomplete, they'll be enriched
+        // from the doctors and patients state that were fetched separately
+        return {
+          ...apt,
+          patient: apt.patient || {},
+          doctor: apt.doctor || {}
+        };
+      });
+      
+      setAppointments(enrichedAppointments);
       setError(null);
     } catch (err) {
       setError('Failed to fetch appointments: ' + (err.response?.data?.message || err.message));
       console.error('Error fetching appointments:', err);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -134,189 +158,159 @@ const AdminAppointments = () => {
     setShowForm(false);
   };
 
-  const formatDateTime = (dateTimeString) => {
-    const dateTime = new Date(dateTimeString);
-    return dateTime.toLocaleString();
-  };
-
   return (
     <AdminLayout>
       <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Manage Appointments</h1>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2"
-        >
-          {showForm ? 'Cancel' : <><FaPlus /> Schedule New Appointment</>}
-        </button>
-      </div>
-
-      {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
-
-      {showForm && (
-        <div className="bg-white shadow-md rounded p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4">{editingAppointment ? 'Edit Appointment' : 'Schedule New Appointment'}</h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Patient</label>
-                <select
-                  name="patientId"
-                  value={formData.patientId}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                  required
-                >
-                  <option value="">Select Patient</option>
-                  {patients.map(patient => (
-                    <option key={patient.id} value={patient.id}>
-                      {patient.firstName} {patient.lastName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Doctor</label>
-                <select
-                  name="doctorId"
-                  value={formData.doctorId}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                  required
-                >
-                  <option value="">Select Doctor</option>
-                  {doctors.map(doctor => (
-                    <option key={doctor.id} value={doctor.id}>
-                      Dr. {doctor.firstName} {doctor.lastName} ({doctor.specialization})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Appointment Date</label>
-                <input
-                  type="date"
-                  name="appointmentDate"
-                  value={formData.appointmentDate}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Appointment Time</label>
-                <input
-                  type="time"
-                  name="appointmentTime"
-                  value={formData.appointmentTime}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                  required
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700">Reason</label>
-                <textarea
-                  name="reason"
-                  value={formData.reason}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                  rows="3"
-                  required
-                ></textarea>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Status</label>
-                <select
-                  name="status"
-                  value={formData.status}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                  required
-                >
-                  <option value="SCHEDULED">Scheduled</option>
-                  <option value="COMPLETED">Completed</option>
-                  <option value="CANCELLED">Cancelled</option>
-                  <option value="NO_SHOW">No Show</option>
-                </select>
-              </div>
-            </div>
-            <div className="flex justify-end space-x-3">
-              <button
-                type="button"
-                onClick={resetForm}
-                className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
-              >
-                {editingAppointment ? 'Update Appointment' : 'Schedule Appointment'}
-              </button>
-            </div>
-          </form>
+        {/* Header with Add Button */}
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800">Manage Appointments</h1>
+            <p className="text-gray-600 mt-1">View, edit, and manage all appointments</p>
+          </div>
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-md transition"
+          >
+            {showForm ? 'Cancel' : <><FaPlus /> Schedule New Appointment</>}
+          </button>
         </div>
-      )}
 
-      {loading ? (
-        <div className="text-center py-4">Loading appointments...</div>
-      ) : appointments.length === 0 ? (
-        <div className="text-center py-4 bg-gray-50 rounded">No appointments found.</div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full bg-white shadow-md rounded">
-            <thead>
-              <tr className="bg-gray-200 text-gray-700">
-                <th className="py-3 px-4 text-left">Patient</th>
-                <th className="py-3 px-4 text-left">Doctor</th>
-                <th className="py-3 px-4 text-left">Date & Time</th>
-                <th className="py-3 px-4 text-left">Reason</th>
-                <th className="py-3 px-4 text-left">Status</th>
-                <th className="py-3 px-4 text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {appointments.map((appointment) => (
-                <tr key={appointment.id} className="border-b hover:bg-gray-50">
-                  <td className="py-3 px-4">{appointment.patient.name}</td>
-                  <td className="py-3 px-4">Dr. {appointment.doctor.name}</td>
-                  <td className="py-3 px-4">{formatDateTime(appointment.appointmentDateTime)}</td>
-                  <td className="py-3 px-4">{appointment.reason}</td>
-                  <td className="py-3 px-4">
-                    <span className={
-                      `px-2 py-1 rounded text-xs font-semibold ${
-                        appointment.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
-                        appointment.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
-                        appointment.status === 'NO_SHOW' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-blue-100 text-blue-800'
-                      }`
-                    }>
-                      {appointment.status}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-center">
-                    <button
-                      onClick={() => handleEdit(appointment)}
-                      className="text-blue-500 hover:text-blue-700 mr-3"
-                    >
-                      <FaEdit />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(appointment.id)}
-                      className="text-red-500 hover:text-red-700"
-                    >
-                      <FaTrash />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+        {/* Error Display */}
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6">
+            {error}
+          </div>
+        )}
+
+        {/* Add/Edit Form */}
+        {showForm && (
+          <div className="bg-white shadow-lg rounded-lg p-6 mb-6 border border-gray-200">
+            <h2 className="text-xl font-semibold mb-4 text-gray-800">
+              {editingAppointment ? 'Edit Appointment' : 'Schedule New Appointment'}
+            </h2>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Patient</label>
+                  <select
+                    name="patientId"
+                    value={formData.patientId}
+                    onChange={handleInputChange}
+                    className="w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  >
+                    <option value="">Select Patient</option>
+                    {patients.map(patient => (
+                      <option key={patient.id} value={patient.id}>
+                        {patient.name || `${patient.firstName} ${patient.lastName}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Doctor</label>
+                  <select
+                    name="doctorId"
+                    value={formData.doctorId}
+                    onChange={handleInputChange}
+                    className="w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  >
+                    <option value="">Select Doctor</option>
+                    {doctors.map(doctor => (
+                      <option key={doctor.id} value={doctor.id}>
+                        Dr. {doctor.name || `${doctor.firstName} ${doctor.lastName}`} 
+                        {doctor.specialization && ` (${doctor.specialization})`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Appointment Date</label>
+                  <input
+                    type="date"
+                    name="appointmentDate"
+                    value={formData.appointmentDate}
+                    onChange={handleInputChange}
+                    className="w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Appointment Time</label>
+                  <input
+                    type="time"
+                    name="appointmentTime"
+                    value={formData.appointmentTime}
+                    onChange={handleInputChange}
+                    className="w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Reason</label>
+                  <textarea
+                    name="reason"
+                    value={formData.reason}
+                    onChange={handleInputChange}
+                    className="w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    rows="3"
+                    required
+                  ></textarea>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <select
+                    name="status"
+                    value={formData.status}
+                    onChange={handleInputChange}
+                    className="w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  >
+                    <option value="SCHEDULED">Scheduled</option>
+                    <option value="CONFIRMED">Confirmed</option>
+                    <option value="COMPLETED">Completed</option>
+                    <option value="CANCELLED">Cancelled</option>
+                    <option value="NO_SHOW">No Show</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-2 rounded-lg transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition"
+                >
+                  {editingAppointment ? 'Update Appointment' : 'Schedule Appointment'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* Appointment List Component */}
+        <AppointmentList
+          appointments={appointments}
+          loading={loading}
+          error={error}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onRefresh={fetchAppointments}
+          doctors={doctors}
+          patients={patients}
+          showStats={true}
+          showFilters={true}
+          showActions={true}
+          showDoctorFilter={true}
+          showPatientFilter={true}
+          role="admin"
+        />
       </div>
     </AdminLayout>
   );

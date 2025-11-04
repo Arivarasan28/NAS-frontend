@@ -23,7 +23,16 @@ const BookAppointmentAutomatic = () => {
   const [selectedSlotForPayment, setSelectedSlotForPayment] = useState(null);
   const [selectedDateForPayment, setSelectedDateForPayment] = useState(null);
   const [bookingInProgress, setBookingInProgress] = useState(false);
-  const consultationFee = 500.00; // Default consultation fee
+  // Compute consultation fee from selected doctor or slot
+  const consultationFee = React.useMemo(() => {
+    const doctorFee = selectedDoctor?.fee;
+    const slotFee = selectedSlotForPayment?.appointmentFee;
+    return (typeof slotFee === 'number' || typeof slotFee === 'string')
+      ? Number(slotFee)
+      : (typeof doctorFee === 'number' || typeof doctorFee === 'string')
+        ? Number(doctorFee)
+        : 500.00;
+  }, [selectedDoctor, selectedSlotForPayment]);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -592,7 +601,12 @@ const BookAppointmentAutomatic = () => {
           }}
           onPaymentSuccess={handlePaymentSuccess}
           appointmentDetails={{
-            doctorName: `Dr. ${selectedDoctor.firstName || ''} ${selectedDoctor.lastName || ''}`,
+            doctorName: (() => {
+              const derived = [selectedDoctor?.firstName, selectedDoctor?.lastName].filter(Boolean).join(' ').trim();
+              const rawName = (selectedDoctor?.name || selectedDoctor?.fullName || selectedDoctor?.user?.name || derived || '').toString().trim();
+              const safe = rawName || 'Doctor';
+              return `Dr. ${safe}`;
+            })(),
             date: new Date(selectedSlotForPayment.startTime).toLocaleDateString('en-US', {
               weekday: 'long',
               year: 'numeric',

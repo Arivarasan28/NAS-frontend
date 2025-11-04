@@ -48,6 +48,9 @@ class AuthService {
       
       // Set default authorization header for all future requests
       this.setAuthHeader(token);
+      
+      // Dispatch custom event to notify components about auth change
+      window.dispatchEvent(new Event('authChange'));
     }
     
     return response.data;
@@ -91,6 +94,9 @@ class AuthService {
       }
 
       this.setAuthHeader(token);
+      
+      // Dispatch custom event to notify components about auth change
+      window.dispatchEvent(new Event('authChange'));
     }
 
     return response.data;
@@ -105,6 +111,9 @@ class AuthService {
     localStorage.removeItem('userId');
     localStorage.removeItem('tokenExpiration');
     delete axios.defaults.headers.common['Authorization'];
+    
+    // Dispatch custom event to notify components about auth change
+    window.dispatchEvent(new Event('authChange'));
   }
   
   /**

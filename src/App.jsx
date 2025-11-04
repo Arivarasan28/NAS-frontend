@@ -124,6 +124,9 @@ import DoctorProfile from './clinic/doctorpages/pages/DoctorProfile';
 import DoctorLeaveManagement from './clinic/doctorpages/pages/DoctorLeaveManagement';
 import AdminProtectedRoutes from './utils/AdminProtectedRoutes';
 import ReceptionistDashboard from './clinic/receptionistpages/pages/ReceptionistDashboard';
+import ReceptionistPatients from './clinic/receptionistpages/pages/ReceptionistPatients';
+import ReceptionistAppointments from './clinic/receptionistpages/pages/ReceptionistAppointments';
+import ReceptionistAppointmentsList from './clinic/receptionistpages/pages/ReceptionistAppointmentsList';
 import PatientProfile from './clinic/patientpages/pages/PatientProfile';
 import PatientDashboard from './clinic/patientpages/pages/PatientDashboard';
 import BookAppointmentAutomatic from './clinic/patientpages/pages/BookAppointmentAutomatic';
@@ -191,6 +194,9 @@ const App = () => {
         {/* Receptionist Routes */}
         <Route element={<ProtectedRoutes allowedRole="RECEPTIONIST" />}>
           <Route path="/receptionist-dashboard" element={<ReceptionistDashboard />} />
+          <Route path="/receptionist-patients" element={<ReceptionistPatients />} />
+          <Route path="/receptionist-appointments" element={<ReceptionistAppointments />} />
+          <Route path="/receptionist-appointments-list" element={<ReceptionistAppointmentsList />} />
         </Route>
         
         {/* Patient Routes */}
